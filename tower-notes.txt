@@ -1,0 +1,108 @@
+1. FINITE DOMAIN SOLVER VS PLAIN
+
+Overall, plain_tower/3 is significantly slower than tower/3. For N <= 3, all test cases finish in less than 1ms for both plain and finite domain towers. N = 4 is more optimal for testing since the results show the performance differences while finishing in a reasonable amount of time. For N = 5, when given a filled puzzle, the counts were usually generated within 1ms for both finite domain solver and plain solver. When given only counts, however, the plain tower takes hours to finish while the finite domain solver gives the first solution in < 13ms.
+
+Brief results with speedup/1:
+
+All test results were the time taken to produce the first solution and all results are produced on seasnet lnxsrv07.
+
+My speedup implementation is as below:
+    speedup(Z):-
+      get_time(X, tower...),
+      get_time(Y, plain_tower...),
+      Z is X/Y.
+
+    get_time(X, Fn) :-
+      statistics(_time, [_|X]), Fn, !.
+
+
+For practical reasons, I used the below test cases with N=4:
+
+  a.
+    tower(4,T1,C1)
+    plain_tower(4,T1,C1)
+
+  Average result:
+    ?- speedup(Z).
+    Z = 6.25
+
+  b.
+    tower(4,T,counts([1,2,2,4],A,B,C))
+    plain_tower(4,T1,counts([1,2,2,4],D,E,F))
+
+  Average result(fd tower is too fast sometimes it gives error because of zero divider):
+    ?- speedup(Z).
+    Z = 174.65853658536585
+
+For further tests with full statistics/0 display:
+
+Test Cases:
+
+tower(5,[[2,3,4,5,1],[5,4,1,3,2],Row3,[RC41,5|Row4Tail],Row5],counts(Top,[4|BottomTail],[Left1,Left2,Left3,Left4,5], Right)).:
+
+    tower:
+        Times           since start      since last
+        user   time     661.446 sec       0.001 sec
+        system time       0.030 sec       0.000 sec
+        cpu    time     661.476 sec       0.001 sec
+        real   time    1255.790 sec       2.244 sec
+    plain_tower:
+        Times           since start      since last
+        user   time     665.550 sec       2.016 sec
+        system time       0.031 sec       0.000 sec
+        cpu    time     665.581 sec       2.016 sec
+        real   time    1291.538 sec       5.126 sec
+
+
+  From cpu time, since last columns, we can see that plain_tower in this case is about 2000 times slower than finite domain tower (2.016s compared to 0.001s).
+
+tower(5,T,C).:
+
+    tower:
+        Times           since start      since last
+        user   time     603.942 sec      10.465 sec
+        system time       0.026 sec       0.001 sec
+        cpu    time     603.968 sec      10.466 sec
+        real   time    1128.825 sec     112.923 sec
+
+    plain_tower:
+        Times           since start      since last
+        user   time     573.036 sec     417.296 sec
+        system time       0.009 sec       0.000 sec
+        cpu    time     573.045 sec     417.296 sec
+        real   time     676.962 sec     496.121 sec
+
+    To generate 5X5 puzzles, finite domain solver produced the first solution in 10.465 seconds and plain tower solver did the same in 417 seconds. Here the plain solver is about 42 times slower.
+
+
+2. AMBIGUOUS PUZZLE
+
+For ambiguous puzzle, I tested some 4X4 and 5X5 test cases. Note that some T1 T2 combinations are duplicated if T1 or T2 is not specified. Below are the results:
+
+For N <= 3, there is no ambiguous puzzle.
+For N = 4, input ambiguous(4,C,T1,T2) generates a lot of T1, T2 pairs.
+I arbitrarily chose C = counts([2,1,3,2],[3,2,2,1],[2,1,2,3],[2,3,2,1]), and input that into the query with tower predicate to verify that it has ambiguous puzzles:
+
+  ?- tower(4, T, counts([2,1,3,2],[3,2,2,1],[2,1,2,3],[2,3,2,1])).
+
+  T = [[1,4,2,3],[4,1,3,2],[3,2,4,1],[2,3,1,4]]? ;
+
+  T = [[1,4,2,3],[4,2,3,1],[3,1,4,2],[2,3,1,4]]? ;
+
+  T = [[2,4,1,3],[4,1,3,2],[3,2,4,1],[1,3,2,4]]? ;
+
+  T = [[2,4,1,3],[4,2,3,1],[3,1,4,2],[1,3,2,4]]? ;
+
+
+For N = 5, I did the same thing as N = 4:
+
+Similarly, I randomly chose C = counts([1,2,2,4,2],[3,3,1,2,4],[1,2,2,3,2],[3,1,2,2,3]).
+
+To verify it has ambiguous puzzles:
+  ?- tower(5, T, counts([1,2,2,4,2],[3,3,1,2,4],[1,2,2,3,2],[3,1,2,2,3])).
+
+  T = [[5,3,4,1,2],[4,1,3,2,5],[1,5,2,3,4],[2,4,1,5,3],[3,2,5,4,1]] ? ;
+
+  T = [[5,3,4,1,2],[4,1,3,2,5],[2,5,1,3,4],[1,4,2,5,3],[3,2,5,4,1]] ? ;
+
+The above has shown that these 'counts' do produce ambiguous puzzles.
